@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Tada AB and other contributors, as listed below.
+ * Copyright (c) 2022-2023 Tada AB and other contributors, as listed below.
  *
  * All rights reserved. This program and the accompanying materials
  * are made available under the terms of the The BSD 3-Clause License
@@ -17,6 +17,12 @@
 #include <executor/tuptable.h>
 
 #include "pljava/pljava.h"
+
+#if PG_VERSION_NUM < 120000
+struct TupleTableSlotOps;
+typedef struct TupleTableSlotOps TupleTableSlotOps;
+extern const TupleTableSlotOps TTSOpsHeapTuple;
+#endif
 
 #ifdef __cplusplus
 extern "C" {
