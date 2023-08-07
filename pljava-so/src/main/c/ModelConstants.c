@@ -187,6 +187,8 @@ static int32 constants[] = {
 	CONSTANT(N_ACL_RIGHTS),
 
 	CONSTANTEXPR(SIZEOF_INT, sizeof (int)),
+
+	TYPEOFFSET(HeapTupleHeaderData, HeapTupleHeaderData, t_infomask),
 };
 
 #undef CONSTANT
@@ -443,7 +445,6 @@ StaticAssertStmt(offsetof(form,fld) == \
 	CONFIRMSIZEOF( HeapTupleData, t_len );
 	CONFIRMSIZEOF( HeapTupleData, t_tableOid );
 
-	CONFIRMOFFSET( HeapTupleHeaderData, t_infomask );
 	CONFIRMOFFSET( HeapTupleHeaderData, t_infomask2 );
 	CONFIRMOFFSET( HeapTupleHeaderData, t_hoff );
 	CONFIRMOFFSET( HeapTupleHeaderData, t_bits );

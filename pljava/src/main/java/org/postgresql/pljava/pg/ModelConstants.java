@@ -200,6 +200,9 @@ public abstract class ModelConstants
 
 	@Native private static final int IDX_SIZEOF_INT     = 61;
 
+	@Native private static final int
+		IDX_OFFSET_HeapTupleHeaderData_t_infomask       = 62;
+
 	/*
 	 * These public statics are the values of interest, set at class
 	 * initialization time by reading them from the buffer returned by _statics.
@@ -292,6 +295,8 @@ public abstract class ModelConstants
 	 * AclItem.
 	 */
 	public static final int N_ACL_RIGHTS;
+
+	public static final int OFFSET_HeapTupleHeaderData_t_infomask;
 
 	/*
 	 * In backporting, can be useful when the git history shows something was
@@ -403,6 +408,9 @@ public abstract class ModelConstants
 		N_ACL_RIGHTS   = checked(b, IDX_N_ACL_RIGHTS);
 
 		SIZEOF_INT     = checked(b, IDX_SIZEOF_INT);
+
+		OFFSET_HeapTupleHeaderData_t_infomask =
+			checked(b, IDX_OFFSET_HeapTupleHeaderData_t_infomask);
 
 		if ( 0 != b.remaining() )
 			throw new ConstantsError();
