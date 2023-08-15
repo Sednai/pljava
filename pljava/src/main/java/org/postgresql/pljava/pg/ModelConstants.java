@@ -198,6 +198,8 @@ public abstract class ModelConstants
 	 */
 	@Native private static final int IDX_N_ACL_RIGHTS   = 60;
 
+	@Native private static final int IDX_SIZEOF_INT     = 61;
+
 	/*
 	 * These public statics are the values of interest, set at class
 	 * initialization time by reading them from the buffer returned by _statics.
@@ -290,6 +292,13 @@ public abstract class ModelConstants
 	 * AclItem.
 	 */
 	public static final int N_ACL_RIGHTS;
+
+	/*
+	 * In backporting, can be useful when the git history shows something was
+	 * always of 'int' type, so it doesn't need a dedicated SIZEOF_FOO, but does
+	 * need to respond to the platform-specific width of 'int'.
+	 */
+	public static final int SIZEOF_INT;
 
 	/**
 	 * Value supplied for one of these constants when built in a version of PG
@@ -392,6 +401,8 @@ public abstract class ModelConstants
 		TYPEOID        = checked(b, IDX_TYPEOID);
 
 		N_ACL_RIGHTS   = checked(b, IDX_N_ACL_RIGHTS);
+
+		SIZEOF_INT     = checked(b, IDX_SIZEOF_INT);
 
 		if ( 0 != b.remaining() )
 			throw new ConstantsError();

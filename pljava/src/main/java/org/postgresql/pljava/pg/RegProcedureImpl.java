@@ -23,6 +23,8 @@ import java.util.List;
 
 import java.util.function.UnaryOperator;
 
+import org.postgresql.pljava.TargetList.Projection;
+
 import org.postgresql.pljava.annotation.Function.Effects;
 import org.postgresql.pljava.annotation.Function.OnNullInput;
 import org.postgresql.pljava.annotation.Function.Parallel;
@@ -200,7 +202,6 @@ implements
 		static final Attribute PROCOST;
 		static final Attribute PROROWS;
 		static final Attribute PROVARIADIC;
-		static final Attribute PROKIND;
 		static final Attribute PROSECDEF;
 		static final Attribute PROLEAKPROOF;
 		static final Attribute PROISSTRICT;
@@ -217,12 +218,14 @@ implements
 		static final Attribute PROBIN;
 		static final Attribute PROCONFIG;
 		static final Attribute PROARGDEFAULTS;
+		static final Projection PROISAGG_PROISWINDOW;
+		static final Attribute PROKIND;
 		static final Attribute PROSUPPORT;
 		static final Attribute PROSQLBODY;
 
 		static
 		{
-			Iterator<Attribute> itr = attNames(
+			AttNames itr = attNames(
 				"proname",
 				"pronamespace",
 				"proowner",
@@ -231,7 +234,6 @@ implements
 				"procost",
 				"prorows",
 				"provariadic",
-				"prokind",
 				"prosecdef",
 				"proleakproof",
 				"proisstrict",
@@ -248,6 +250,11 @@ implements
 				"probin",
 				"proconfig",
 				"proargdefaults"
+			).andIf(PG_VERSION_NUM <  110000,
+				"proisagg",
+				"proiswindow"
+			).andIf(PG_VERSION_NUM >= 110000,
+				"prokind"
 			).andIf(PG_VERSION_NUM >= 120000,
 				"prosupport"
 			).andIf(PG_VERSION_NUM >= 140000,
@@ -262,7 +269,6 @@ implements
 			PROCOST        = itr.next();
 			PROROWS        = itr.next();
 			PROVARIADIC    = itr.next();
-			PROKIND        = itr.next();
 			PROSECDEF      = itr.next();
 			PROLEAKPROOF   = itr.next();
 			PROISSTRICT    = itr.next();
@@ -279,6 +285,8 @@ implements
 			PROBIN         = itr.next();
 			PROCONFIG      = itr.next();
 			PROARGDEFAULTS = itr.next();
+			PROISAGG_PROISWINDOW = itr.project(itr.next(), itr.next());
+			PROKIND        = itr.next();
 			PROSUPPORT     = itr.next();
 			PROSQLBODY     = itr.next();
 
@@ -335,6 +343,15 @@ implements
 	private static Kind kind(RegProcedureImpl o) throws SQLException
 	{
 		TupleTableSlot s = o.cacheTuple();
+
+		if ( null == Att.PROKIND ) // before PG 11, there were separate booleans
+		{
+			return Att.PROISAGG_PROISWINDOW.applyOver(s, c ->
+				c.apply(BOOLEAN_INSTANCE, BOOLEAN_INSTANCE, (agg, win) ->
+					agg ? Kind.AGGREGATE : win ? Kind.WINDOW : Kind.FUNCTION)
+			);
+		}
+
 		byte b = s.get(Att.PROKIND, INT1_INSTANCE);
 		switch ( b )
 		{
