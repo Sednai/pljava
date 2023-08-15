@@ -200,7 +200,6 @@ implements
 		static final Attribute PROCOST;
 		static final Attribute PROROWS;
 		static final Attribute PROVARIADIC;
-		static final Attribute PROSUPPORT;
 		static final Attribute PROKIND;
 		static final Attribute PROSECDEF;
 		static final Attribute PROLEAKPROOF;
@@ -218,6 +217,7 @@ implements
 		static final Attribute PROBIN;
 		static final Attribute PROCONFIG;
 		static final Attribute PROARGDEFAULTS;
+		static final Attribute PROSUPPORT;
 		static final Attribute PROSQLBODY;
 
 		static
@@ -231,7 +231,6 @@ implements
 				"procost",
 				"prorows",
 				"provariadic",
-				"prosupport",
 				"prokind",
 				"prosecdef",
 				"proleakproof",
@@ -249,6 +248,8 @@ implements
 				"probin",
 				"proconfig",
 				"proargdefaults"
+			).andIf(PG_VERSION_NUM >= 120000,
+				"prosupport"
 			).andIf(PG_VERSION_NUM >= 140000,
 				"prosqlbody"
 			).project(CLASSID.tupleDescriptor());
@@ -261,7 +262,6 @@ implements
 			PROCOST        = itr.next();
 			PROROWS        = itr.next();
 			PROVARIADIC    = itr.next();
-			PROSUPPORT     = itr.next();
 			PROKIND        = itr.next();
 			PROSECDEF      = itr.next();
 			PROLEAKPROOF   = itr.next();
@@ -279,6 +279,7 @@ implements
 			PROBIN         = itr.next();
 			PROCONFIG      = itr.next();
 			PROARGDEFAULTS = itr.next();
+			PROSUPPORT     = itr.next();
 			PROSQLBODY     = itr.next();
 
 			assert ! itr.hasNext() : "attribute initialization miscount";
@@ -315,11 +316,20 @@ implements
 	private static RegProcedure<PlannerSupport> support(RegProcedureImpl o)
 	throws SQLException
 	{
-		TupleTableSlot s = o.cacheTuple();
+		RegProcedure<?> p;
+
+		if ( null == Att.PROSUPPORT ) // missing in this PG version
+			p = of(RegProcedure.CLASSID, InvalidOid);
+		else
+		{
+			TupleTableSlot t = o.cacheTuple();
+			p = t.get(Att.PROSUPPORT, REGPROCEDURE_INSTANCE);
+		}
+
 		@SuppressWarnings("unchecked") // XXX add memo magic here
-		RegProcedure<PlannerSupport> p = (RegProcedure<PlannerSupport>)
-			s.get(Att.PROSUPPORT, REGPROCEDURE_INSTANCE);
-		return p;
+		RegProcedure<PlannerSupport> narrowed = (RegProcedure<PlannerSupport>)p;
+
+		return narrowed;
 	}
 
 	private static Kind kind(RegProcedureImpl o) throws SQLException
