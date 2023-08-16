@@ -203,6 +203,15 @@ public abstract class ModelConstants
 	@Native private static final int
 		IDX_OFFSET_HeapTupleHeaderData_t_infomask       = 62;
 
+	@Native private static final int
+		IDX_OFFSET_HeapTupleHeaderData_t_infomask2      = 63;
+
+	@Native private static final int
+		IDX_OFFSET_HeapTupleHeaderData_t_hoff     	    = 64;
+
+	@Native private static final int
+		IDX_OFFSET_HeapTupleHeaderData_t_bits     	    = 65;
+		
 	/*
 	 * These public statics are the values of interest, set at class
 	 * initialization time by reading them from the buffer returned by _statics.
@@ -296,7 +305,12 @@ public abstract class ModelConstants
 	 */
 	public static final int N_ACL_RIGHTS;
 
+	// TBASE
 	public static final int OFFSET_HeapTupleHeaderData_t_infomask;
+	public static final int OFFSET_HeapTupleHeaderData_t_infomask2;
+	public static final int OFFSET_HeapTupleHeaderData_t_hoff;
+	public static final int OFFSET_HeapTupleHeaderData_t_bits;
+	
 
 	/*
 	 * In backporting, can be useful when the git history shows something was
@@ -409,9 +423,20 @@ public abstract class ModelConstants
 
 		SIZEOF_INT     = checked(b, IDX_SIZEOF_INT);
 
+		// TBASE
 		OFFSET_HeapTupleHeaderData_t_infomask =
 			checked(b, IDX_OFFSET_HeapTupleHeaderData_t_infomask);
 
+		OFFSET_HeapTupleHeaderData_t_infomask2 =
+			checked(b, IDX_OFFSET_HeapTupleHeaderData_t_infomask2);
+
+		OFFSET_HeapTupleHeaderData_t_hoff =
+			checked(b, IDX_OFFSET_HeapTupleHeaderData_t_hoff);
+
+		OFFSET_HeapTupleHeaderData_t_bits =
+			checked(b, IDX_OFFSET_HeapTupleHeaderData_t_bits);
+
+			
 		if ( 0 != b.remaining() )
 			throw new ConstantsError();
 	}

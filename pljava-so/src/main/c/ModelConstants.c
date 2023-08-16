@@ -188,7 +188,12 @@ static int32 constants[] = {
 
 	CONSTANTEXPR(SIZEOF_INT, sizeof (int)),
 
+	// TBASE
 	TYPEOFFSET(HeapTupleHeaderData, HeapTupleHeaderData, t_infomask),
+	TYPEOFFSET(HeapTupleHeaderData, HeapTupleHeaderData, t_infomask2),
+	TYPEOFFSET(HeapTupleHeaderData, HeapTupleHeaderData, t_hoff),
+	TYPEOFFSET(HeapTupleHeaderData, HeapTupleHeaderData, t_bits),
+	
 };
 
 #undef CONSTANT
@@ -445,10 +450,11 @@ StaticAssertStmt(offsetof(form,fld) == \
 	CONFIRMSIZEOF( HeapTupleData, t_len );
 	CONFIRMSIZEOF( HeapTupleData, t_tableOid );
 
+/* TBASE
 	CONFIRMOFFSET( HeapTupleHeaderData, t_infomask2 );
 	CONFIRMOFFSET( HeapTupleHeaderData, t_hoff );
 	CONFIRMOFFSET( HeapTupleHeaderData, t_bits );
-
+*/
 	CONFIRMSIZEOF( HeapTupleHeaderData, t_infomask );
 	CONFIRMSIZEOF( HeapTupleHeaderData, t_infomask2 );
 	CONFIRMSIZEOF( HeapTupleHeaderData, t_hoff );
