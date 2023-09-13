@@ -518,7 +518,7 @@ public class InstallHelper
 		try
 		{
 			p = c.setSavepoint();
-			s.execute("CREATE SCHEMA IF NOT EXISTS sqlj");
+			s.execute("CREATE SCHEMA sqlj");
 			s.execute("COMMENT ON SCHEMA sqlj IS '"+
 			"Schema for objects pertaining to PL/Java, as specified by " +
 			"\"SQL/JRT\" part 13 of the SQL standard, Java Routines and Types.'"

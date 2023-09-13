@@ -322,8 +322,10 @@ void Function_initialize(void)
 
 jobject pljava_Function_refInvoke(Function self)
 {
-	return JNI_callStaticObjectMethod(s_EntryPoints_class,
+	jobject test = JNI_callStaticObjectMethod(s_EntryPoints_class,
 		s_EntryPoints_invoke, self->func.nonudt.invocable);
+
+	return test;
 }
 
 void pljava_Function_voidInvoke(Function self)
@@ -1184,9 +1186,9 @@ JNIEXPORT jboolean JNICALL
 			self->func.nonudt.returnType = Type_fromJavaType(returnType, rjtc);
 			pfree(rjtc);
 		}
-		else
+		else {
 			self->func.nonudt.returnType = Type_fromOid(returnType, typeMap);
-
+		}
 		if ( 0 < numParams )
 		{
 			jint *paramOids;
@@ -1229,8 +1231,11 @@ JNIEXPORT jboolean JNICALL
 		/* Store Java type name of return type at outJTypes[i], where i (after
 		 * all of the above) indexes the last element of outJTypes.
 		 */
+
+
 		jtn = String_createJavaStringFromNTS(Type_getJavaTypeName(
 			self->func.nonudt.returnType));
+
 		JNI_setObjectArrayElement(outJTypes, i, jtn);
 		JNI_deleteLocalRef(jtn);
 

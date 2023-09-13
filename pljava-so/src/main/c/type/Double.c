@@ -80,12 +80,41 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 	if(doubleArray == 0)
 		return 0;
 
-	nElems = JNI_getArrayLength((jarray)doubleArray);
-	v = createArrayType(nElems, sizeof(jdouble), FLOAT8OID, false);
-	JNI_getDoubleArrayRegion((jdoubleArray)doubleArray, 0,
-					 nElems, (jdouble*)ARR_DATA_PTR(v));
+	nElems = JNI_getArrayLength((jarray)doubleArray);	
+	
+	jobject firstEl = JNI_getObjectArrayElement((jarray)doubleArray,0);
+	
+	if(JNI_isInstanceOf(firstEl,s_Double_class)) {
 
-	PG_RETURN_ARRAYTYPE_P(v);
+		v = createArrayType(nElems, sizeof(jdouble), FLOAT8OID, false);
+		
+		JNI_getDoubleArrayRegion((jdoubleArray)doubleArray, 0,
+						nElems, (jdouble*)ARR_DATA_PTR(v));
+
+		PG_RETURN_ARRAYTYPE_P(v);
+
+	} else{
+		// Higher dim array		
+		jarray arr = (jarray) firstEl; 
+ 		jsize dim2 = JNI_getArrayLength( arr );	
+
+		v = create2dArrayType(nElems, dim2, sizeof(jdouble), FLOAT8OID, false);
+
+		// Copy first dim
+		JNI_getDoubleArrayRegion((jdoubleArray)arr, 0,
+						dim2, (jdouble*)ARR_DATA_PTR(v));
+		
+		// Copy remaining
+		for(int i = 1; i < nElems; i++) {
+			jdoubleArray els = JNI_getObjectArrayElement((jarray)doubleArray,i);
+	
+			JNI_getDoubleArrayRegion(els, 0,
+						dim2, (jdouble*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jdouble)) );
+		}
+
+		PG_RETURN_ARRAYTYPE_P(v);
+	}
+
 }
 
 /*

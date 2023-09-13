@@ -90,6 +90,13 @@ public class SingleRowWriter extends SingleRowResultSet
 			m_values[columnIndex-1] = x;
 
 		Class<?> c = m_tupleDesc.getColumnClass(columnIndex);
+		
+		// Warning: This will let through unmatched element types ! <- Improve
+		if( Object[][].class.isInstance(x) && Object[].class.isAssignableFrom( c )  ) {
+			m_values[columnIndex-1] = x;
+				return;
+		}
+
 		TypeBridge<?>.Holder xAlt = TypeBridge.wrap(x);
 		if(null == xAlt  &&  !c.isInstance(x)
 		&& !(c == byte[].class && (x instanceof BlobValue)))

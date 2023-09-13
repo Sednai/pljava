@@ -14,6 +14,8 @@
 #include "pljava/type/Array.h"
 #include "pljava/Invocation.h"
 
+static jclass s_ObjectArr_class;
+
 void arraySetNull(bits8* bitmap, int offset, bool flag)
 {
 	if(bitmap != 0)
@@ -63,6 +65,46 @@ ArrayType* createArrayType(jsize nElems, size_t elemSize, Oid elemType, bool wit
 	return v;
 }
 
+
+
+ArrayType* create2dArrayType(jsize dim1, jsize dim2, size_t elemSize, Oid elemType, bool withNulls)
+{
+	ArrayType* v;
+	jsize nElems = dim1*dim2;
+	Size nBytes = nElems * elemSize;
+	MemoryContext currCtx = Invocation_switchToUpperContext();
+
+	Size dataoffset;
+	if(withNulls)
+	{
+		dataoffset = ARR_OVERHEAD_WITHNULLS(dim1, nElems);
+		nBytes += dataoffset;
+	}
+	else
+	{
+		dataoffset = 0;			/* marker for no null bitmap */
+		nBytes += ARR_OVERHEAD_NONULLS(dim1);
+	}
+	v = (ArrayType*)palloc0(nBytes);
+	AssertVariableIsOfType(v->dataoffset, int32);
+	v->dataoffset = (int32)dataoffset;
+	MemoryContextSwitchTo(currCtx);
+
+#if PG_VERSION_NUM < 80300
+	ARR_SIZE(v) = nBytes;
+#else
+	SET_VARSIZE(v, nBytes);
+#endif
+	ARR_NDIM(v) = dim1;
+	ARR_ELEMTYPE(v) = elemType;
+	for(int i = 0; i < dim1; i++) {
+		ARR_DIMS(v)[i] = dim2;
+		ARR_LBOUND(v)[i] = 1;
+	}
+	return v;
+}
+
+
 static jvalue _Array_coerceDatum(Type self, Datum arg)
 {
 	jvalue result;
@@ -106,34 +148,85 @@ static Datum _Array_coerceObject(Type self, jobject objArray)
 {
 	ArrayType* v;
 	jsize idx;
-	int    lowerBound = 1;
 	Type   elemType = Type_getElementType(self);
-	int    nElems   = (int)JNI_getArrayLength((jarray)objArray);
+	int dim1 = ((int)JNI_getArrayLength((jarray)objArray));	
+	int dim2 = 1;
+	jobject firstEl = JNI_getObjectArrayElement((jarray)objArray,0);
+
+	int* lbounds; 
+	int* dims;
+	
+	if(s_ObjectArr_class == NULL) s_ObjectArr_class = JNI_newGlobalRef(PgObject_getJavaClass("[Ljava/lang/Object;"));
+	
+	if(JNI_isInstanceOf(firstEl, s_ObjectArr_class )) {
+
+ 		dim2 = JNI_getArrayLength( (jarray) firstEl );	
+ 		lbounds = (int*)palloc(dim1*sizeof(int));
+		dims   = (int*)palloc(dim1*sizeof(int));
+		
+		for(int i = 0; i< dim1; i++) {
+			lbounds[i] = 1;
+			dims[i] = dim2;
+		}
+	} else {
+
+		int lb = 1;
+		int di = dim1;
+
+		lbounds = &lb;
+		dims = &di;		
+	}
+	
+	int nElems = dim1*dim2;
+		
 	Datum* values   = (Datum*)palloc(nElems * sizeof(Datum) + nElems * sizeof(bool));
 	bool*  nulls    = (bool*)(values + nElems);
 
-	for(idx = 0; idx < nElems; ++idx)
-	{
-		jobject obj = JNI_getObjectArrayElement(objArray, idx);
-		if(obj == 0)
+	if( dim2==1) {
+
+		for(idx = 0; idx < nElems; ++idx)
 		{
-			nulls[idx] = true;
-			values[idx] = 0;
+			jobject obj = JNI_getObjectArrayElement(objArray, idx);
+			if(obj == 0)
+			{
+				nulls[idx] = true;
+				values[idx] = 0;
+			}
+			else
+			{
+				nulls[idx] = false;
+				values[idx] = Type_coerceObject(elemType, obj);
+				JNI_deleteLocalRef(obj);
+			}
 		}
-		else
-		{
-			nulls[idx] = false;
-			values[idx] = Type_coerceObject(elemType, obj);
-			JNI_deleteLocalRef(obj);
+	} else {
+		idx = 0;
+		for(int i = 0; i < dim1; i++) {
+			jobject el = JNI_getObjectArrayElement((jarray)objArray,i);
+			for(int j = 0; j < dim2; j++) {
+				jobject obj = JNI_getObjectArrayElement(el, j);
+				if(obj == 0)
+				{
+					nulls[idx] = true;
+					values[idx] = 0;
+				}
+				else
+				{
+					nulls[idx] = false;
+					values[idx] = Type_coerceObject(elemType, obj);
+					JNI_deleteLocalRef(obj);
+				}
+				idx++;
+			}
 		}
 	}
-
+	
 	v = construct_md_array(
 		values,
 		nulls,
-		1,
-		&nElems,
-		&lowerBound,
+		dim2,
+		dims,
+		lbounds,
 		Type_getOid(elemType),
 		Type_getLength(elemType),
 		Type_isByValue(elemType),
@@ -195,7 +288,7 @@ Type Array_fromOid2(Oid typeId, Type elementType, DatumCoercer coerceDatum, Obje
 	self->elementType = elementType;
 	Type_registerType(arrayClass->javaTypeName, self);
 
-	if(Type_isPrimitive(elementType))
+	if(Type_isPrimitive(elementType)) 
 		self->objectType = Array_fromOid(typeId, Type_getObjectType(elementType));
 	return self;
 }

@@ -377,6 +377,53 @@ public class Function
 			}	
 		}
 
+		// Catch for 2d arrays:
+		if ( jTypes[jTypes.length - 1].substring(jTypes[jTypes.length - 1].length()-1,jTypes[jTypes.length - 1].length()).equals("]") ) {
+			
+			jTypes[jTypes.length - 1] = jTypes[jTypes.length - 1] + "[]";
+		
+			
+			mt = buildSignature(schemaLoader, jTypes, acc, commute,
+					retTypeIsOutParameter, isMultiCall, true); // retry altForm true
+				try
+				{
+					MethodHandle h =
+						lookupFor(clazz).findStatic(clazz, methodName, mt);
+
+					return h;
+					
+				//	return filterReturnValue(h, s_wrapWithPicker);
+				} catch ( ReflectiveOperationException e )
+				{
+				SQLException sqe1 =
+					memberException(clazz, methodName, origMT, ex1,
+						true /*isStatic*/);
+				SQLException sqe2 =
+					memberException(clazz, methodName, mt, e,
+						true /*isStatic*/);
+
+				/*
+				 * If one of the exceptions is NoSuchMethodException and the
+				 * other isn't, then the one that isn't carries news about
+				 * a problem with a method that actually was found. If that's
+				 * the second one, we'll just lie a little about the order and
+				 * report it first. (We never promised what order we'd do the
+				 * lookups in anyway, and the current Java-to-PG exception
+				 * translation only preserves the "first" one's details.)
+				 */
+				if ( ex1 instanceof NoSuchMethodException
+					&& ! (e instanceof NoSuchMethodException) )
+				{
+					sqe2.setNextException(sqe1);
+					throw sqe2;
+				}
+
+				sqe1.setNextException(sqe2);
+				throw sqe1;
+				}
+
+		}
+
 		throw
 			memberException(clazz, methodName, origMT, ex1, true /*isStatic*/);
 	}

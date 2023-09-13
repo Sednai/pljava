@@ -23,6 +23,8 @@ extern "C" {
  ***********************************************************************/
 
 extern ArrayType* createArrayType(jsize nElems, size_t elemSize, Oid elemType, bool withNulls);
+extern ArrayType* create2dArrayType(jsize dim1, jsize dim2, size_t elemSize, Oid elemType, bool withNulls);
+
 extern void arraySetNull(bits8* bitmap, int offset, bool flag);
 extern bool arrayIsNull(const bits8* bitmap, int offset);
 
