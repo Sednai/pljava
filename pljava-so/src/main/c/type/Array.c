@@ -255,6 +255,7 @@ static bool _Array_canReplaceType(Type self, Type other)
 
 Type Array_fromOid(Oid typeId, Type elementType)
 {
+	elog(NOTICE,"(Array.Array_fromOid)");
 	return Array_fromOid2(typeId, elementType, _Array_coerceDatum, _Array_coerceObject);
 }
 
@@ -288,8 +289,11 @@ Type Array_fromOid2(Oid typeId, Type elementType, DatumCoercer coerceDatum, Obje
 	self->elementType = elementType;
 	Type_registerType(arrayClass->javaTypeName, self);
 
+	
+	/* Removed for native
 	if(Type_isPrimitive(elementType)) 
 		self->objectType = Array_fromOid(typeId, Type_getObjectType(elementType));
+	*/
 	return self;
 }
 
