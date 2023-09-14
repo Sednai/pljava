@@ -91,9 +91,6 @@ public class SingleRowWriter extends SingleRowResultSet
 
 		Class<?> c = m_tupleDesc.getColumnClass(columnIndex);
 		
-		// Warning: This will let through unmatched element types ! <- Improve
-		
-		//if( (Object[][].class.isInstance(x) && Object[].class.isAssignableFrom( c )) || double[][].class.isInstance(x)  ) {
 		Class<?> xc = x.getClass();
 		if(xc.isArray() && xc.getComponentType().isArray() && xc.getComponentType().getComponentType() == double.class) {
 			m_values[columnIndex-1] = x;
