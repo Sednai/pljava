@@ -333,10 +333,18 @@ public class InstallHelper
 
 		try
 		{
+			
+			// Deactivated for TornadoVM
+			/*
 			SecurityManager sm = new SecurityManager();
 			System.setSecurityManager( sm);
 			if ( sm == System.getSecurityManager() )
 				return;
+ 			 */
+			if(true) {
+			return;
+			}
+			
 		}
 		catch ( UnsupportedOperationException e )
 		{

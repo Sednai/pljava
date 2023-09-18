@@ -85,7 +85,7 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 	jobject firstEl = JNI_getObjectArrayElement((jarray)doubleArray,0);
 	
 	if(JNI_isInstanceOf(firstEl,s_Double_class)) {
-
+	//if(JNI_isInstanceOf(firstEl,PgObject_getJavaClass("java/lang/Double"))) {
 		v = createArrayType(nElems, sizeof(jdouble), FLOAT8OID, false);
 		
 		JNI_getDoubleArrayRegion((jdoubleArray)doubleArray, 0,
@@ -93,7 +93,8 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 
 		PG_RETURN_ARRAYTYPE_P(v);
 
-	} else{
+	} 
+	else{
 		// Higher dim array		
 		jarray arr = (jarray) firstEl; 
  		jsize dim2 = JNI_getArrayLength( arr );	
@@ -114,7 +115,7 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 
 		PG_RETURN_ARRAYTYPE_P(v);
 	}
-
+	
 }
 
 /*
