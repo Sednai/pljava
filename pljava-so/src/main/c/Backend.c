@@ -1510,6 +1510,34 @@ static void JVMOptList_addModuleMain(JVMOptList* jol)
 	JVMOptList_add(jol, buf.data, 0, false);
 }
 
+/* Helper function to read JVM options line by line from a file supplied via @ */
+static void addFileJVMOptions(JVMOptList* optList,char* filename) {
+	FILE *file;
+    file = fopen(filename,"r");
+    char *line = NULL;
+	size_t len = 0;
+	size_t read;
+	while((read = getline(&line,&len,file)) != -1) {
+		if ((line[0] != '#') && (line[0] != '\n')) {
+
+			// Replace = in export and open
+			char *p = strstr(line, "--add-exports ");
+			if (p != NULL) {
+				memcpy(p, "--add-exports=",14);
+			} else {
+				p = strstr(line, "--add-opens ");
+				if (p != NULL) {
+					memcpy(p, "--add-opens=",12);
+				}
+			}
+
+			line[read-1] = '\0';
+			// Add option
+			JVMOptList_add(optList, line, 0, true);		
+		}
+	}
+}
+
 /* Split JVM options. The string is split on whitespace unless the
  * whitespace is found within a string or is escaped by backslash. A
  * backslash escaped quote is not considered a string delimiter.
@@ -1562,14 +1590,18 @@ static void addUserJVMOptions(JVMOptList* optList)
 						if(c == 0)
 							break;
 
-						if(c != '-')
+						if( (c != '-') && (c != '@') ) // Allow for supply of options via @
 							appendStringInfoChar(&buf, ' ');
 						else if(buf.len > 0)
 						{
 							/* Whitespace followed by '-' triggers new
 							 * option declaration.
 							 */
-							JVMOptList_add(optList, buf.data, 0, true);
+							if(buf.data[0]!='@') {
+								JVMOptList_add(optList, buf.data, 0, true);
+							} else {
+								addFileJVMOptions(optList, buf.data+1);
+							}
 							buf.len = 0;
 							buf.data[0] = 0;
 						}
@@ -1580,7 +1612,11 @@ static void addUserJVMOptions(JVMOptList* optList)
 			break;
 		}
 		if(buf.len > 0)
-			JVMOptList_add(optList, buf.data, 0, true);
+			if(buf.data[0]!='@') {
+				JVMOptList_add(optList, buf.data, 0, true);
+			} else {
+				addFileJVMOptions(optList, buf.data+1);		
+			}
 		pfree(buf.data);
 	}
 }

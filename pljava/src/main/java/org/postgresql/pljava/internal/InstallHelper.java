@@ -41,6 +41,8 @@ import static java.sql.Types.VARCHAR;
 import org.postgresql.pljava.jdbc.SQLUtils;
 import org.postgresql.pljava.management.SQLDeploymentDescriptor;
 import org.postgresql.pljava.policy.TrialPolicy;
+import org.postgresql.pljava.sqlgen.Lexicals.Identifier.Simple;
+
 import static org.postgresql.pljava.annotation.processing.DDRWriter.eQuote;
 import static org.postgresql.pljava.elog.ELogHandler.LOG_WARNING;
 import static org.postgresql.pljava.model.CharsetEncoding.SERVER_ENCODING;
@@ -333,10 +335,16 @@ public class InstallHelper
 
 		try
 		{
+			// Deactivated for TornadoVM
+			/*
 			SecurityManager sm = new SecurityManager();
 			System.setSecurityManager( sm);
 			if ( sm == System.getSecurityManager() )
 				return;
+ 			 */
+			if(true) {
+			return;
+			}
 		}
 		catch ( UnsupportedOperationException e )
 		{

@@ -74,6 +74,8 @@ static jvalue _doubleArray_coerceDatum(Type self, Datum arg)
 
 static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 {
+	char* csig = PgObject_getClassName( JNI_getObjectClass(doubleArray) );
+
 	ArrayType* v;
 	jsize nElems;
 
@@ -81,10 +83,8 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 		return 0;
 
 	nElems = JNI_getArrayLength((jarray)doubleArray);	
-	
-	jobject firstEl = JNI_getObjectArrayElement((jarray)doubleArray,0);
-	
-	if(JNI_isInstanceOf(firstEl,s_Double_class)) {
+
+	if(csig[1] != '[') {
 
 		v = createArrayType(nElems, sizeof(jdouble), FLOAT8OID, false);
 		
@@ -95,7 +95,7 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 
 	} else{
 		// Higher dim array		
-		jarray arr = (jarray) firstEl; 
+		jarray arr = (jarray) JNI_getObjectArrayElement(doubleArray,0); 
  		jsize dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jdouble), FLOAT8OID, false);

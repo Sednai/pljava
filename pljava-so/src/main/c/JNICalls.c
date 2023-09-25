@@ -1164,6 +1164,16 @@ jclass JNI_getObjectClass(jobject obj)
 	return result;
 }
 
+jint JNI_getObjectRefType(jobject object)
+{
+	jint result;
+	BEGIN_JAVA
+	result = (*env)->GetObjectRefType(env, object);
+	END_JAVA
+	return result;
+}
+
+
 jshort* JNI_getShortArrayElements(jshortArray array, jboolean* isCopy)
 {
 	jshort* result;

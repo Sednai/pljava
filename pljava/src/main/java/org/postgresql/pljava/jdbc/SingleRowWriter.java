@@ -91,10 +91,12 @@ public class SingleRowWriter extends SingleRowResultSet
 
 		Class<?> c = m_tupleDesc.getColumnClass(columnIndex);
 		
-		// Warning: This will let through unmatched element types ! <- Improve
-		if( Object[][].class.isInstance(x) && Object[].class.isAssignableFrom( c )  ) {
-			m_values[columnIndex-1] = x;
+		if(c.isArray()) {
+			Class<?> xc = x.getClass();
+			if(xc.isArray() && xc.getComponentType().isArray() && xc.getComponentType().getComponentType() == c.getComponentType() ) {
+				m_values[columnIndex-1] = x;
 				return;
+			}
 		}
 
 		TypeBridge<?>.Holder xAlt = TypeBridge.wrap(x);
