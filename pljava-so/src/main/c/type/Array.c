@@ -95,12 +95,13 @@ ArrayType* create2dArrayType(jsize dim1, jsize dim2, size_t elemSize, Oid elemTy
 #else
 	SET_VARSIZE(v, nBytes);
 #endif
-	ARR_NDIM(v) = dim1;
+	ARR_NDIM(v) = 2;
 	ARR_ELEMTYPE(v) = elemType;
-	for(int i = 0; i < dim1; i++) {
-		ARR_DIMS(v)[i] = dim2;
-		ARR_LBOUND(v)[i] = 1;
-	}
+	ARR_DIMS(v)[0] = dim1;
+	ARR_DIMS(v)[1] = dim2;
+	ARR_LBOUND(v)[0] = 1;
+	ARR_LBOUND(v)[1] = 1;
+	
 	return v;
 }
 
@@ -146,35 +147,44 @@ static jvalue _Array_coerceDatum(Type self, Datum arg)
 
 static Datum _Array_coerceObject(Type self, jobject objArray)
 {
+	char* csig = PgObject_getClassName( JNI_getObjectClass(objArray) );
+	
 	ArrayType* v;
 	jsize idx;
 	Type   elemType = Type_getElementType(self);
-	int dim1 = ((int)JNI_getArrayLength((jarray)objArray));	
-	int dim2 = 1;
-	jobject firstEl = JNI_getObjectArrayElement((jarray)objArray,0);
-
+	
 	int* lbounds; 
 	int* dims;
-	
-	if(s_ObjectArr_class == NULL) s_ObjectArr_class = JNI_newGlobalRef(PgObject_getJavaClass("[Ljava/lang/Object;"));
-	
-	if(JNI_isInstanceOf(firstEl, s_ObjectArr_class )) {
+	int ndims;
+	int dim1;
+	int dim2;
 
- 		dim2 = JNI_getArrayLength( (jarray) firstEl );	
- 		lbounds = (int*)palloc(dim1*sizeof(int));
-		dims   = (int*)palloc(dim1*sizeof(int));
+	if(csig[1] == '[')  {
+		ndims = 2;
+	
+		jobject firstEl = JNI_getObjectArrayElement((jarray)objArray,0);
+	
+		dim1 = ((int)JNI_getArrayLength((jarray)objArray));		
+		dim2 = JNI_getArrayLength( (jarray) firstEl );	
+ 	
+		lbounds = (int*)palloc(2);
+		dims   = (int*)palloc(2);
 		
-		for(int i = 0; i< dim1; i++) {
-			lbounds[i] = 1;
-			dims[i] = dim2;
-		}
-	} else {
+		elog(WARNING,"[DEBUG]: 2d array (%d,%d)",dim1,dim2);
 
+		lbounds[0] = 1;
+		lbounds[1] = 1;
+		dims[0] = dim1;
+		dims[1] = dim2;
+	
+	} else {
+		dim2 = 1;
+		ndims = 1;
 		int lb = 1;
-		int di = dim1;
+		dim1 = ((int)JNI_getArrayLength((jarray)objArray));	
 
 		lbounds = &lb;
-		dims = &di;		
+		dims = &dim1;		
 	}
 	
 	int nElems = dim1*dim2;
@@ -224,7 +234,7 @@ static Datum _Array_coerceObject(Type self, jobject objArray)
 	v = construct_md_array(
 		values,
 		nulls,
-		dim2,
+		ndims,
 		dims,
 		lbounds,
 		Type_getOid(elemType),
