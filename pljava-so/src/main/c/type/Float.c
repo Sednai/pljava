@@ -74,20 +74,46 @@ static jvalue _floatArray_coerceDatum(Type self, Datum arg)
 
 static Datum _floatArray_coerceObject(Type self, jobject floatArray)
 {
+	char* csig = PgObject_getClassName( JNI_getObjectClass(floatArray) );
+
 	ArrayType* v;
 	jsize nElems;
 
 	if(floatArray == 0)
 		return 0;
 
-	nElems = JNI_getArrayLength((jarray)floatArray);
+	nElems = JNI_getArrayLength((jarray)floatArray);	
 
-	v = createArrayType(nElems, sizeof(jfloat), FLOAT4OID, false);
+	if(csig[1] != '[') {
+		
+		v = createArrayType(nElems, sizeof(jfloat), FLOAT4OID, false);
+		
+		JNI_getFloatArrayRegion((jfloatArray)floatArray, 0,
+						nElems, (jfloat*)ARR_DATA_PTR(v));
 
-	JNI_getFloatArrayRegion((jfloatArray)floatArray, 0,
-					  nElems, (jfloat*)ARR_DATA_PTR(v));
+		PG_RETURN_ARRAYTYPE_P(v);
 
-	PG_RETURN_ARRAYTYPE_P(v);
+	} else{
+		// Higher dim array		
+		jarray arr = (jarray) JNI_getObjectArrayElement(floatArray,0); 
+ 		jsize dim2 = JNI_getArrayLength( arr );	
+
+		v = create2dArrayType(nElems, dim2, sizeof(jfloat), FLOAT4OID, false);
+
+		// Copy first dim
+		JNI_getFloatArrayRegion((jfloatArray)arr, 0,
+						dim2, (jfloat*)ARR_DATA_PTR(v));
+		
+		// Copy remaining
+		for(int i = 1; i < nElems; i++) {
+			jfloatArray els = JNI_getObjectArrayElement((jarray)floatArray,i);
+	
+			JNI_getFloatArrayRegion(els, 0,
+						dim2, (jfloat*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jfloat)) );
+		}
+
+		PG_RETURN_ARRAYTYPE_P(v);
+	}
 }
 
 /*

@@ -899,7 +899,7 @@ public class SPIConnection implements Connection, SlotTester
 				throw new SQLException(e.toString());
 			}
 		}
-		throw new SQLException("Cannot derive a value of class " +
+		throw new SQLException(" " +
 				cls.getName() + " from an object of class " + value.getClass().getName());
 	}
 

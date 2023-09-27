@@ -85,7 +85,7 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 	nElems = JNI_getArrayLength((jarray)doubleArray);	
 
 	if(csig[1] != '[') {
-
+		
 		v = createArrayType(nElems, sizeof(jdouble), FLOAT8OID, false);
 		
 		JNI_getDoubleArrayRegion((jdoubleArray)doubleArray, 0,

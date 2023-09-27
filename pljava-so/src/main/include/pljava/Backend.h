@@ -38,6 +38,9 @@ extern bool integerDateTimes;
 
 int Backend_setJavaLogLevel(int logLevel);
 
+/* GUC state */
+extern bool plJavaNativeArraysEnabled;
+
 /*
  * Called at the ends of committing transactions to emit a warning about future
  * JEP 411 impacts, at most once per session, if any PL/Java functions were

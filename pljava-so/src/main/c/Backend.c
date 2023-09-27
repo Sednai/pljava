@@ -124,7 +124,7 @@ static int   statementCacheSize;
 static bool  pljavaDebug;
 static bool  pljavaReleaseLingeringSavepoints;
 static bool  pljavaEnabled;
-
+bool plJavaNativeArraysEnabled;
 static int   java_thread_pg_entry;
 
 static int   s_javaLogLevel;
@@ -1873,6 +1873,19 @@ static void registerGUCOptions(void)
 		check_java_thread_pg_entry, /* check hook */
 		assign_java_thread_pg_entry,
 		NULL); /* display hook */
+
+	BOOL_GUC(
+		"pljava.nativearrays",
+		"Enable native arrays",
+		NULL,
+		&plJavaNativeArraysEnabled,
+		false, /* boot value */
+		PGC_USERSET,
+		0,    /* flags */
+		NULL, /* check hook */
+		NULL,
+		NULL); /* show hook */
+
 
 	EmitWarningsOnPlaceholders("pljava");
 }

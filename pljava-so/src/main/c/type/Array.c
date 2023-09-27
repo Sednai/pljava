@@ -13,8 +13,7 @@
 #include "pljava/type/Type_priv.h"
 #include "pljava/type/Array.h"
 #include "pljava/Invocation.h"
-
-static jclass s_ObjectArr_class;
+#include "pljava/Backend.h"
 
 void arraySetNull(bits8* bitmap, int offset, bool flag)
 {
@@ -170,8 +169,6 @@ static Datum _Array_coerceObject(Type self, jobject objArray)
 		lbounds = (int*)palloc(2);
 		dims   = (int*)palloc(2);
 		
-		elog(WARNING,"[DEBUG]: 2d array (%d,%d)",dim1,dim2);
-
 		lbounds[0] = 1;
 		lbounds[1] = 1;
 		dims[0] = dim1;
@@ -298,8 +295,10 @@ Type Array_fromOid2(Oid typeId, Type elementType, DatumCoercer coerceDatum, Obje
 	self->elementType = elementType;
 	Type_registerType(arrayClass->javaTypeName, self);
 
-	if(Type_isPrimitive(elementType)) 
+	
+	if(!plJavaNativeArraysEnabled && Type_isPrimitive(elementType)) 
 		self->objectType = Array_fromOid(typeId, Type_getObjectType(elementType));
+	
 	return self;
 }
 
