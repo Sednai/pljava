@@ -14,6 +14,7 @@
 #include "pljava/type/Type_priv.h"
 #include "pljava/type/Array.h"
 #include "pljava/Invocation.h"
+#include <math.h>
 
 static TypeClass s_floatClass;
 static jclass    s_Float_class;
@@ -44,32 +45,91 @@ static jvalue _float_coerceDatum(Type self, Datum arg)
 }
 
 static jvalue _floatArray_coerceDatum(Type self, Datum arg)
-{
+{	
 	jvalue     result;
 	ArrayType* v      = DatumGetArrayTypeP(arg);
-	jsize      nElems = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
-	jfloatArray floatArray = JNI_newFloatArray(nElems);
 
-	if(ARR_HASNULL(v))
-	{
-		jsize idx;
-		jboolean isCopy = JNI_FALSE;
-		bits8* nullBitMap = ARR_NULLBITMAP(v);
-		jfloat* values = (jfloat*)ARR_DATA_PTR(v);
-		jfloat* elems  = JNI_getFloatArrayElements(floatArray, &isCopy);
-		for(idx = 0; idx < nElems; ++idx)
+	if (ARR_NDIM(v) != 2 ) { 
+		jsize      nElems = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
+		jfloatArray floatArray = JNI_newFloatArray(nElems);
+
+		if(ARR_HASNULL(v))
 		{
-			if(arrayIsNull(nullBitMap, idx))
-				elems[idx] = 0;
-			else
-				elems[idx] = *values++;
+			jsize idx;
+			jboolean isCopy = JNI_FALSE;
+			bits8* nullBitMap = ARR_NULLBITMAP(v);
+			jfloat* values = (jfloat*)ARR_DATA_PTR(v);
+			jfloat* elems  = JNI_getFloatArrayElements(floatArray, &isCopy);
+			for(idx = 0; idx < nElems; ++idx)
+			{
+				if(arrayIsNull(nullBitMap, idx))
+					elems[idx] = 0;
+				else
+					elems[idx] = *values++;
+			}
+			JNI_releaseFloatArrayElements(floatArray, elems, JNI_COMMIT);
+		} else {
+			JNI_setFloatArrayRegion(floatArray, 0, nElems, (jfloat *)ARR_DATA_PTR(v));
 		}
-		JNI_releaseFloatArrayElements(floatArray, elems, JNI_COMMIT);
+
+		result.l = (jobject)floatArray;
+		return result;
 	}
-	else
-		JNI_setFloatArrayRegion(floatArray, 0, nElems, (jfloat*)ARR_DATA_PTR(v));
-	result.l = (jobject)floatArray;
-	return result;
+	else {
+		
+		// Create outer array
+		jobjectArray objArray = JNI_newObjectArray(ARR_DIMS(v)[0], JNI_newGlobalRef(PgObject_getJavaClass("[F")), 0);
+		
+		int nc = 0;
+		int NaNc = 0;
+
+		if(ARR_HASNULL(v)) {
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jfloatArray innerArray = JNI_newFloatArray(ARR_DIMS(v)[1]);
+				
+				
+				jboolean isCopy = JNI_FALSE;
+				bits8* nullBitMap = ARR_NULLBITMAP(v);
+
+				jfloat* elems  = JNI_getFloatArrayElements(innerArray, &isCopy);
+			
+				for(int jdx = 0; jdx < ARR_DIMS(v)[1]; ++jdx) {
+					if(arrayIsNull(nullBitMap, nc)) {
+						elems[jdx] = NAN;
+						NaNc++;
+					}
+					else {
+						elems[jdx] = *((jfloat*) (ARR_DATA_PTR(v)+(nc-NaNc)*sizeof(float)));
+					}
+					nc++;
+				}
+				JNI_releaseFloatArrayElements(innerArray, elems, JNI_COMMIT);
+	
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);
+			}	
+		} else {
+				
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jfloatArray innerArray = JNI_newFloatArray(ARR_DIMS(v)[1]);
+				
+				JNI_setFloatArrayRegion(innerArray, 0, ARR_DIMS(v)[1], (jfloat *) (ARR_DATA_PTR(v) + nc*sizeof(float) ));
+				nc += ARR_DIMS(v)[1];
+
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);		
+			}
+		}	
+
+		result.l = (jobject) objArray;		
+		return result;
+	}
 }
 
 static Datum _floatArray_coerceObject(Type self, jobject floatArray)

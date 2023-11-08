@@ -573,7 +573,7 @@ bool Type_isPrimitive(Type self)
 }
 
 Type Type_fromJavaType(Oid typeId, const char* javaTypeName)
-{
+{	
 	/*
 	 * Do an initial lookup with InvalidOid as the oid part of the key. Multiple
 	 * entries for the same Java name and distinct oids are not anticipated
@@ -600,7 +600,13 @@ Type Type_fromJavaType(Oid typeId, const char* javaTypeName)
 			char* elemName = palloc(jtlen+1);
 			memcpy(elemName, javaTypeName, jtlen);
 			elemName[jtlen] = 0;
-			type = Type_getArrayType(Type_fromJavaType(InvalidOid, elemName), typeId);
+
+			type = Type_fromJavaType(InvalidOid, elemName);
+
+			if(strcmp("[][]", javaTypeName + jtlen-2)!=0) {
+				type = Type_getArrayType(type, typeId);
+			}
+
 			pfree(elemName);
 			return type;
 		}
@@ -712,7 +718,7 @@ Type Type_fromOid(Oid typeId, jobject typeMap)
 
 	typeTup    = PgObject_getValidTuple(TYPEOID, typeId, "type");
 	typeStruct = (Form_pg_type)GETSTRUCT(typeTup);
-
+	
 	if(typeStruct->typelem != 0 && typeStruct->typlen == -1)
 	{
 		type = Type_getArrayType(

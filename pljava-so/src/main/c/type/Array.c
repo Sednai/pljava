@@ -119,26 +119,31 @@ static jvalue _Array_coerceDatum(Type self, Datum arg)
 	const char* values = ARR_DATA_PTR(v);
 	bits8* nullBitMap = ARR_NULLBITMAP(v);
 
-	for(idx = 0; idx < nElems; ++idx)
-	{
-		if(arrayIsNull(nullBitMap, idx))
-			JNI_setObjectArrayElement(objArray, idx, 0);
-		else
+	if (ARR_NDIM(v) != 2 ) { 
+		// For dim!=2 send as 1d array
+		for(idx = 0; idx < nElems; ++idx)
 		{
-			Datum value = fetch_att(values, elemByValue, elemLength);
-			jvalue obj = Type_coerceDatum(elemType, value);
-			JNI_setObjectArrayElement(objArray, idx, obj.l);
-			JNI_deleteLocalRef(obj.l);
+			if(arrayIsNull(nullBitMap, idx))
+				JNI_setObjectArrayElement(objArray, idx, 0);
+			else
+			{
+				Datum value = fetch_att(values, elemByValue, elemLength);
+				jvalue obj = Type_coerceDatum(elemType, value);
+				JNI_setObjectArrayElement(objArray, idx, obj.l);
+				JNI_deleteLocalRef(obj.l);
 
-#if PG_VERSION_NUM < 80300
-			values = att_addlength(values, elemLength, PointerGetDatum(values));
-			values = (char*)att_align(values, elemAlign);
-#else
-			values = att_addlength_datum(values, elemLength, PointerGetDatum(values));
-			values = (char*)att_align_nominal(values, elemAlign);
-#endif
-
+	#if PG_VERSION_NUM < 80300
+				values = att_addlength(values, elemLength, PointerGetDatum(values));
+				values = (char*)att_align(values, elemAlign);
+	#else
+				values = att_addlength_datum(values, elemLength, PointerGetDatum(values));
+				values = (char*)att_align_nominal(values, elemAlign);
+	#endif
+			}
 		}
+	} else {
+		elog(WARNING,"[XZDEBUG]: 2d object arrays not implemented yet (easy to do)");
+
 	}
 	result.l = (jobject)objArray;
 	return result;
@@ -147,7 +152,7 @@ static jvalue _Array_coerceDatum(Type self, Datum arg)
 static Datum _Array_coerceObject(Type self, jobject objArray)
 {
 	char* csig = PgObject_getClassName( JNI_getObjectClass(objArray) );
-	
+
 	ArrayType* v;
 	jsize idx;
 	Type   elemType = Type_getElementType(self);
@@ -295,10 +300,12 @@ Type Array_fromOid2(Oid typeId, Type elementType, DatumCoercer coerceDatum, Obje
 	self->elementType = elementType;
 	Type_registerType(arrayClass->javaTypeName, self);
 
-	
-	if(!plJavaNativeArraysEnabled && Type_isPrimitive(elementType)) 
+	if (
+		!plJavaNativeArraysEnabled && Type_isPrimitive(elementType)
+	)
+	{
 		self->objectType = Array_fromOid(typeId, Type_getObjectType(elementType));
-	
+	}
 	return self;
 }
 

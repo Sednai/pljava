@@ -14,6 +14,7 @@
 #include "pljava/type/Type_priv.h"
 #include "pljava/type/Array.h"
 #include "pljava/Invocation.h"
+#include <math.h>
 
 static TypeClass s_doubleClass;
 static jclass    s_Double_class;
@@ -47,29 +48,88 @@ static jvalue _doubleArray_coerceDatum(Type self, Datum arg)
 {
 	jvalue     result;
 	ArrayType* v      = DatumGetArrayTypeP(arg);
-	jsize      nElems = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
-	jdoubleArray doubleArray = JNI_newDoubleArray(nElems);
-
-	if(ARR_HASNULL(v))
-	{
-		jsize idx;
-		jboolean isCopy = JNI_FALSE;
-		bits8* nullBitMap = ARR_NULLBITMAP(v);
-		jdouble* values = (jdouble*)ARR_DATA_PTR(v);
-		jdouble* elems  = JNI_getDoubleArrayElements(doubleArray, &isCopy);
-		for(idx = 0; idx < nElems; ++idx)
+	
+	
+	if (ARR_NDIM(v) != 2 ) { 
+		jsize      nElems = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
+		jdoubleArray doubleArray = JNI_newDoubleArray(nElems);
+		
+		if(ARR_HASNULL(v))
 		{
-			if(arrayIsNull(nullBitMap, idx))
-				elems[idx] = 0;
-			else
-				elems[idx] = *values++;
+			jsize idx;
+			jboolean isCopy = JNI_FALSE;
+			bits8* nullBitMap = ARR_NULLBITMAP(v);
+			jdouble* values = (jdouble*)ARR_DATA_PTR(v);
+			jdouble* elems  = JNI_getDoubleArrayElements(doubleArray, &isCopy);
+			for(idx = 0; idx < nElems; ++idx)
+			{
+				if(arrayIsNull(nullBitMap, idx))
+					elems[idx] = 0;
+				else
+					elems[idx] = *values++;
+			}
+			JNI_releaseDoubleArrayElements(doubleArray, elems, JNI_COMMIT);
 		}
-		JNI_releaseDoubleArrayElements(doubleArray, elems, JNI_COMMIT);
-	}
-	else
-		JNI_setDoubleArrayRegion(doubleArray, 0, nElems, (jdouble*)ARR_DATA_PTR(v));
-	result.l = (jobject)doubleArray;
-	return result;
+		else {
+			JNI_setDoubleArrayRegion(doubleArray, 0, nElems, (jdouble*)ARR_DATA_PTR(v));
+			
+			result.l = (jobject)doubleArray;
+			return result;
+		}
+	} else {
+		// Create outer array
+		jobjectArray objArray = JNI_newObjectArray(ARR_DIMS(v)[0], JNI_newGlobalRef(PgObject_getJavaClass("[D")), 0);
+		
+		int nc = 0;
+		int NaNc = 0;
+
+		if(ARR_HASNULL(v)) {
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jdoubleArray innerArray = JNI_newDoubleArray(ARR_DIMS(v)[1]);
+				
+				
+				jboolean isCopy = JNI_FALSE;
+				bits8* nullBitMap = ARR_NULLBITMAP(v);
+
+				jdouble* elems  = JNI_getDoubleArrayElements(innerArray, &isCopy);
+			
+				for(int jdx = 0; jdx < ARR_DIMS(v)[1]; ++jdx) {
+					if(arrayIsNull(nullBitMap, nc)) {
+						elems[jdx] = NAN;
+						NaNc++;
+					}
+					else {
+						elems[jdx] = *((jdouble*) (ARR_DATA_PTR(v)+(nc-NaNc)*sizeof(double)));
+					}
+					nc++;
+				}
+				JNI_releaseDoubleArrayElements(innerArray, elems, JNI_COMMIT);
+	
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);
+			}	
+		} else {
+				
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jdoubleArray innerArray = JNI_newDoubleArray(ARR_DIMS(v)[1]);
+				
+				JNI_setDoubleArrayRegion(innerArray, 0, ARR_DIMS(v)[1], (jdouble *) (ARR_DATA_PTR(v) + nc*sizeof(double) ));
+				nc += ARR_DIMS(v)[1];
+
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);		
+			}
+		}	
+
+		result.l = (jobject) objArray;		
+		return result;
+	}	
 }
 
 static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
@@ -81,7 +141,7 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 
 	if(doubleArray == 0)
 		return 0;
-
+	
 	nElems = JNI_getArrayLength((jarray)doubleArray);	
 
 	if(csig[1] != '[') {
