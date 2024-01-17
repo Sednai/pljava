@@ -142,7 +142,7 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
-					<version>3.8.1</version>
+					<version>3.12.1</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>
@@ -152,7 +152,9 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<configuration>
 					<encoding>${project.build.sourceEncoding}</encoding>
-					<release>9</release>
+					<!--<release>21</release> -->
+					<source>21</source>
+					<target>21</target>
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
 				</configuration>
