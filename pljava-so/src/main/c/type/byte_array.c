@@ -34,57 +34,85 @@ static Datum _byte_array_coerceObject(Type self, jobject byteArray)
 	if(byteArray == 0)
 		return 0;
 
-	if(JNI_isInstanceOf(byteArray, s_byteArray_class))
-	{
-		jsize  length    = JNI_getArrayLength((jarray)byteArray);
-		int32  byteaSize = length + VARHDRSZ;
+//	char* csig = PgObject_getClassName( JNI_getObjectClass(byteArray) );
 
-		bytes = (bytea*)palloc(byteaSize);
-#if PG_VERSION_NUM < 80300
-		VARATT_SIZEP(bytes) = byteaSize;
-#else
-		SET_VARSIZE(bytes, byteaSize);
-#endif
-		JNI_getByteArrayRegion((jbyteArray)byteArray, 0, length, (jbyte*)VARDATA(bytes));
+//	if(csig[1] != '[') {
+		if(JNI_isInstanceOf(byteArray, s_byteArray_class))
+		{
+			jsize  length    = JNI_getArrayLength((jarray)byteArray);
+			int32  byteaSize = length + VARHDRSZ;
+
+			bytes = (bytea*)palloc(byteaSize);
+	#if PG_VERSION_NUM < 80300
+			VARATT_SIZEP(bytes) = byteaSize;
+	#else
+			SET_VARSIZE(bytes, byteaSize);
+	#endif
+			JNI_getByteArrayRegion((jbyteArray)byteArray, 0, length, (jbyte*)VARDATA(bytes));
+		}
+		else if(JNI_isInstanceOf(byteArray, s_BlobValue_class))
+		{
+			jobject byteBuffer;
+			int32 byteaSize;
+			jlong length = JNI_callLongMethod(byteArray, s_BlobValue_length);
+
+			byteaSize = (int32)(length + VARHDRSZ);
+			bytes = (bytea*)palloc(byteaSize);
+	#if PG_VERSION_NUM < 80300
+			VARATT_SIZEP(bytes) = byteaSize;
+	#else
+			SET_VARSIZE(bytes, byteaSize);
+	#endif
+
+			byteBuffer = JNI_newDirectByteBuffer((void*)VARDATA(bytes), length);
+			if(byteBuffer != 0)
+				JNI_callVoidMethod(byteArray, s_BlobValue_getContents, byteBuffer);
+			JNI_deleteLocalRef(byteBuffer);
+		}
+		else
+		{
+			Exception_throwIllegalArgument("Not coercable to bytea");
+		}
+
+		PG_RETURN_BYTEA_P(bytes);
+	
+	} 
+	/*
+	else {
+
+		elog(WARNING,"(DEBUG)");
+
+		if(JNI_isInstanceOf(byteArray, s_byteArray_class))
+		{
+
+			elog(ERROR,"Array of bytea not implemented.");
+
+		} else {
+			elog(ERROR,"Blob arrays not implemented.");
+		}
+
 	}
-	else if(JNI_isInstanceOf(byteArray, s_BlobValue_class))
-	{
-		jobject byteBuffer;
-		int32 byteaSize;
-		jlong length = JNI_callLongMethod(byteArray, s_BlobValue_length);
-
-		byteaSize = (int32)(length + VARHDRSZ);
-		bytes = (bytea*)palloc(byteaSize);
-#if PG_VERSION_NUM < 80300
-		VARATT_SIZEP(bytes) = byteaSize;
-#else
-		SET_VARSIZE(bytes, byteaSize);
-#endif
-
-		byteBuffer = JNI_newDirectByteBuffer((void*)VARDATA(bytes), length);
-		if(byteBuffer != 0)
-			JNI_callVoidMethod(byteArray, s_BlobValue_getContents, byteBuffer);
-		JNI_deleteLocalRef(byteBuffer);
-	}
-	else
-	{
-		Exception_throwIllegalArgument("Not coercable to bytea");
-	}
-
-	PG_RETURN_BYTEA_P(bytes);
-}
+	*/
+//}
 
 /* Make this datatype available to the postgres system.
  */
 extern void byte_array_initialize(void);
 void byte_array_initialize(void)
-{
+{	
 	TypeClass cls = TypeClass_alloc("type.byte[]");
 	cls->JNISignature = "[B";
 	cls->javaTypeName = "byte[]";
 	cls->coerceDatum  = _byte_array_coerceDatum;
 	cls->coerceObject = _byte_array_coerceObject;
 	Type_registerType("byte[]", TypeClass_allocInstance(cls, BYTEAOID));
+
+	TypeClass cls2 = TypeClass_alloc("type.byte[][]");
+	cls2->JNISignature = "[[B";
+	cls2->javaTypeName = "byte[][]";
+	cls2->coerceDatum  = _byte_array_coerceDatum;
+	cls2->coerceObject = _byte_array_coerceObject;
+	Type_registerType("byte[][]", TypeClass_allocInstance(cls2, 1001));
 
 	s_byteArray_class = JNI_newGlobalRef(PgObject_getJavaClass("[B"));
 	s_BlobValue_class = JNI_newGlobalRef(PgObject_getJavaClass("org/postgresql/pljava/jdbc/BlobValue"));

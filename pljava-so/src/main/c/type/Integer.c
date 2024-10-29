@@ -14,6 +14,7 @@
 #include "pljava/type/Type_priv.h"
 #include "pljava/type/Array.h"
 #include "pljava/Invocation.h"
+#include <math.h>
 
 static TypeClass s_intClass;
 static jclass    s_Integer_class;
@@ -40,29 +41,88 @@ static jvalue _intArray_coerceDatum(Type self, Datum arg)
 {
 	jvalue     result;
 	ArrayType* v        = DatumGetArrayTypeP(arg);
-	jsize      nElems   = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
-	jintArray  intArray = JNI_newIntArray(nElems);
 
-	if(ARR_HASNULL(v))
-	{
-		jsize idx;
-		jboolean isCopy = JNI_FALSE;
-		bits8* nullBitMap = ARR_NULLBITMAP(v);
-		jint* values = (jint*)ARR_DATA_PTR(v);
-		jint* elems  = JNI_getIntArrayElements(intArray, &isCopy);
-		for(idx = 0; idx < nElems; ++idx)
+	if (ARR_NDIM(v) != 2 ) {
+		jsize      nElems   = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
+		jintArray  intArray = JNI_newIntArray(nElems);
+
+		if(ARR_HASNULL(v))
 		{
-			if(arrayIsNull(nullBitMap, idx))
-				elems[idx] = 0;
-			else
-				elems[idx] = *values++;
+			jsize idx;
+			jboolean isCopy = JNI_FALSE;
+			bits8* nullBitMap = ARR_NULLBITMAP(v);
+			jint* values = (jint*)ARR_DATA_PTR(v);
+			jint* elems  = JNI_getIntArrayElements(intArray, &isCopy);
+			for(idx = 0; idx < nElems; ++idx)
+			{
+				if(arrayIsNull(nullBitMap, idx))
+					elems[idx] = 0;
+				else
+					elems[idx] = *values++;
+			}
+			JNI_releaseIntArrayElements(intArray, elems, JNI_COMMIT);
 		}
-		JNI_releaseIntArrayElements(intArray, elems, JNI_COMMIT);
-	}
-	else
-		JNI_setIntArrayRegion(intArray, 0, nElems, (jint*)ARR_DATA_PTR(v));
-	result.l = (jobject)intArray;
-	return result;
+		else
+			JNI_setIntArrayRegion(intArray, 0, nElems, (jint*)ARR_DATA_PTR(v));
+	
+		result.l = (jobject)intArray;
+		return result;
+	
+	} else {
+
+		// Create outer array
+		jobjectArray objArray = JNI_newObjectArray(ARR_DIMS(v)[0], JNI_newGlobalRef(PgObject_getJavaClass("[I")), 0);
+		
+		int nc = 0;
+		int NaNc = 0;
+
+		if(ARR_HASNULL(v)) {
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jintArray innerArray = JNI_newIntArray(ARR_DIMS(v)[1]);
+							
+				jboolean isCopy = JNI_FALSE;
+				bits8* nullBitMap = ARR_NULLBITMAP(v);
+
+				jint* elems  = JNI_getIntArrayElements(innerArray, &isCopy);
+			
+				for(int jdx = 0; jdx < ARR_DIMS(v)[1]; ++jdx) {
+					if(arrayIsNull(nullBitMap, nc)) {
+						elems[jdx] = 0;
+						NaNc++;
+					}
+					else {
+						elems[jdx] = *((jfloat*) (ARR_DATA_PTR(v)+(nc-NaNc)*sizeof(int)));
+					}
+					nc++;
+				}
+				JNI_releaseIntArrayElements(innerArray, elems, JNI_COMMIT);
+	
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);
+			}	
+
+		} else {
+				
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jintArray innerArray = JNI_newIntArray(ARR_DIMS(v)[1]);
+				
+				JNI_setIntArrayRegion(innerArray, 0, ARR_DIMS(v)[1], (jint *) (ARR_DATA_PTR(v) + nc*sizeof(int) ));
+				nc += ARR_DIMS(v)[1];
+
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);		
+			}
+		}
+
+		result.l = (jobject) objArray;		
+		return result;
+	}	
 }
 
 static Datum _intArray_coerceObject(Type self, jobject intArray)
@@ -73,14 +133,44 @@ static Datum _intArray_coerceObject(Type self, jobject intArray)
 	if(intArray == 0)
 		return 0;
 
-	nElems = JNI_getArrayLength((jarray)intArray);
+	char* csig = PgObject_getClassName( JNI_getObjectClass(intArray) );
 
-	v = createArrayType(nElems, sizeof(jint), INT4OID, false);
+	nElems = JNI_getArrayLength((jarray)intArray);	
 
-	JNI_getIntArrayRegion(
-			(jintArray)intArray, 0, nElems, (jint*)ARR_DATA_PTR(v));
+	if(csig[1] != '[') {
+		
+		v = createArrayType(nElems, sizeof(jfloat), INT4OID, false);
+		
+		JNI_getFloatArrayRegion((jintArray)intArray, 0,
+						nElems, (jint*)ARR_DATA_PTR(v));
 
-	PG_RETURN_ARRAYTYPE_P(v);
+		PG_RETURN_ARRAYTYPE_P(v);
+
+	} else {
+
+		if(csig[2] == '[')
+			elog(ERROR,"Higher dimensional arrays not supported");
+
+		jarray arr = (jarray) JNI_getObjectArrayElement(intArray,0); 
+ 		jsize dim2 = JNI_getArrayLength( arr );	
+
+		v = create2dArrayType(nElems, dim2, sizeof(jint), INT4OID, false);
+
+		// Copy first dim
+		JNI_getIntArrayRegion((jintArray)arr, 0,
+						dim2, (jint*)ARR_DATA_PTR(v));
+		
+		// Copy remaining
+		for(int i = 1; i < nElems; i++) {
+			jintArray els = JNI_getObjectArrayElement((jarray)intArray,i);
+	
+			JNI_getIntArrayRegion(els, 0,
+						dim2, (jint*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jint)) );
+		}
+
+		PG_RETURN_ARRAYTYPE_P(v);
+	}
+
 }
 
 /*

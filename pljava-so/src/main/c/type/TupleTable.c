@@ -19,6 +19,8 @@
 #include "pljava/type/Tuple.h"
 #include "pljava/type/TupleDesc.h"
 
+#include <time.h>
+
 #if PG_VERSION_NUM < 120000
 #define ExecCopySlotHeapTuple(tts) ExecCopySlotTuple((tts))
 #endif
@@ -49,6 +51,8 @@ jobject TupleTable_createFromSlot(TupleTableSlot* tts)
 
 jobject TupleTable_create(SPITupleTable* tts, jobject knownTD)
 {
+	
+	
 	jobjectArray tuples;
 	uint64 tupcount;
 	MemoryContext curr;
@@ -72,11 +76,26 @@ jobject TupleTable_create(SPITupleTable* tts, jobject knownTD)
 	if(knownTD == 0)
 		knownTD = pljava_TupleDesc_internalCreate(tts->tupdesc);
 
+/*
+	struct timespec start, finish, delta;
+    clock_gettime(CLOCK_REALTIME, &start);
+*/
 	tuples = pljava_Tuple_createArray(tts->vals, (jint)tupcount, true);
+/*
+	clock_gettime(CLOCK_REALTIME, &finish);
+    sub_timespec(start, finish, &delta);
+
+	elog(WARNING,"[DEBUG](TupleTable_create): %d.%.9ld",(int)delta.tv_sec, delta.tv_nsec);
+*/	
+	
 	MemoryContextSwitchTo(curr);
 
-	return JNI_newObject(s_TupleTable_class, s_TupleTable_init, knownTD, tuples);
+	jobject tmp = JNI_newObject(s_TupleTable_class, s_TupleTable_init, knownTD, tuples);
+	
+	return tmp;
 }
+
+
 
 /* Make this datatype available to the postgres system.
  */

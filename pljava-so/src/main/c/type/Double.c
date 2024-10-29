@@ -49,7 +49,6 @@ static jvalue _doubleArray_coerceDatum(Type self, Datum arg)
 	jvalue     result;
 	ArrayType* v      = DatumGetArrayTypeP(arg);
 	
-	
 	if (ARR_NDIM(v) != 2 ) { 
 		jsize      nElems = (jsize)ArrayGetNItems(ARR_NDIM(v), ARR_DIMS(v));
 		jdoubleArray doubleArray = JNI_newDoubleArray(nElems);
@@ -133,15 +132,15 @@ static jvalue _doubleArray_coerceDatum(Type self, Datum arg)
 }
 
 static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
-{
-	char* csig = PgObject_getClassName( JNI_getObjectClass(doubleArray) );
-
+{	
 	ArrayType* v;
 	jsize nElems;
 
 	if(doubleArray == 0)
 		return 0;
-	
+
+	char* csig = PgObject_getClassName( JNI_getObjectClass(doubleArray) );
+
 	nElems = JNI_getArrayLength((jarray)doubleArray);	
 
 	if(csig[1] != '[') {
@@ -153,8 +152,11 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 
 		PG_RETURN_ARRAYTYPE_P(v);
 
-	} else{
-		// Higher dim array		
+	} else {
+		
+		if(csig[2] == '[')
+			elog(ERROR,"Higher dimensional arrays not supported");
+
 		jarray arr = (jarray) JNI_getObjectArrayElement(doubleArray,0); 
  		jsize dim2 = JNI_getArrayLength( arr );	
 

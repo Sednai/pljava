@@ -70,7 +70,7 @@ static jvalue _byteArray_coerceDatum(Type self, Datum arg)
 }
 
 static Datum _byteArray_coerceObject(Type self, jobject byteArray)
-{
+{	
 	ArrayType* v;
 	jsize nElems;
 

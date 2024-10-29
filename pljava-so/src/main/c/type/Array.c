@@ -118,7 +118,12 @@ static jvalue _Array_coerceDatum(Type self, Datum arg)
 	jobjectArray objArray = JNI_newObjectArray(nElems, Type_getJavaClass(elemType), 0);
 	const char* values = ARR_DATA_PTR(v);
 	bits8* nullBitMap = ARR_NULLBITMAP(v);
-
+	/*
+	if(nElems > 50) {
+		result.l = (jobject)objArray;
+	return result;
+	}
+	*/
 	if (ARR_NDIM(v) != 2 ) { 
 		// For dim!=2 send as 1d array
 		for(idx = 0; idx < nElems; ++idx)
@@ -141,10 +146,48 @@ static jvalue _Array_coerceDatum(Type self, Datum arg)
 	#endif
 			}
 		}
+	
 	} else {
-		elog(WARNING,"[XZDEBUG]: 2d object arrays not implemented yet (easy to do)");
+	
+		// Create outer array
+		objArray = JNI_newObjectArray(ARR_DIMS(v)[0],  objArray, 0);
+		int nc = 0;
+		int NaNc = 0;
 
+		if(ARR_HASNULL(v)) {
+			elog(ERROR,"2d object arrays with NULLs not implemented yet");
+		}
+		else {
+			
+			for (int idx = 0; idx < ARR_DIMS(v)[0]; ++idx)
+			{
+				// Create inner
+				jobjectArray innerArray = JNI_newObjectArray(ARR_DIMS(v)[1],  Type_getJavaClass(elemType), 0);
+
+				for(int jdx = 0; jdx < ARR_DIMS(v)[1]; ++jdx) {
+			
+						Datum value = fetch_att(values, elemByValue, elemLength);
+						jvalue obj = Type_coerceDatum(elemType, value);
+						JNI_setObjectArrayElement(innerArray, jdx, obj.l);
+						JNI_deleteLocalRef(obj.l);
+
+			#if PG_VERSION_NUM < 80300
+						values = att_addlength(values, elemLength, PointerGetDatum(values));
+						values = (char*)att_align(values, elemAlign);
+			#else
+						values = att_addlength_datum(values, elemLength, PointerGetDatum(values));
+						values = (char*)att_align_nominal(values, elemAlign);
+			#endif
+				}
+				
+				// Set
+				JNI_setObjectArrayElement(objArray, idx, innerArray);
+				JNI_deleteLocalRef(innerArray);		
+			}
+
+		}
 	}
+	
 	result.l = (jobject)objArray;
 	return result;
 }
@@ -299,6 +342,8 @@ Type Array_fromOid2(Oid typeId, Type elementType, DatumCoercer coerceDatum, Obje
 
 	self->elementType = elementType;
 	Type_registerType(arrayClass->javaTypeName, self);
+
+//	elog(WARNING,"(Array_fromOid2) %s,%s",elemClassName,elemJavaTypeName);
 
 	if (
 		!plJavaNativeArraysEnabled && Type_isPrimitive(elementType)

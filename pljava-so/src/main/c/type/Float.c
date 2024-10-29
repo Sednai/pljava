@@ -88,8 +88,7 @@ static jvalue _floatArray_coerceDatum(Type self, Datum arg)
 			{
 				// Create inner
 				jfloatArray innerArray = JNI_newFloatArray(ARR_DIMS(v)[1]);
-				
-				
+							
 				jboolean isCopy = JNI_FALSE;
 				bits8* nullBitMap = ARR_NULLBITMAP(v);
 
@@ -134,13 +133,13 @@ static jvalue _floatArray_coerceDatum(Type self, Datum arg)
 
 static Datum _floatArray_coerceObject(Type self, jobject floatArray)
 {
-	char* csig = PgObject_getClassName( JNI_getObjectClass(floatArray) );
-
 	ArrayType* v;
 	jsize nElems;
 
 	if(floatArray == 0)
 		return 0;
+
+	char* csig = PgObject_getClassName( JNI_getObjectClass(floatArray) );
 
 	nElems = JNI_getArrayLength((jarray)floatArray);	
 
@@ -153,8 +152,11 @@ static Datum _floatArray_coerceObject(Type self, jobject floatArray)
 
 		PG_RETURN_ARRAYTYPE_P(v);
 
-	} else{
-		// Higher dim array		
+	} else {
+		
+		if(csig[2] == '[')
+			elog(ERROR,"Higher dimensional arrays not supported");
+
 		jarray arr = (jarray) JNI_getObjectArrayElement(floatArray,0); 
  		jsize dim2 = JNI_getArrayLength( arr );	
 
