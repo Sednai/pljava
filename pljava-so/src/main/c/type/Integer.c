@@ -156,13 +156,13 @@ static Datum _intArray_coerceObject(Type self, jobject intArray)
 		jsize dim2;
 		if(arr == 0) {
 			dim2 = 0;
-			nElems = 0;
+			nElems = 1;
 		} else 
 			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jint), INT4OID, false);
 
-		if(nElems > 0) {
+		if(dim2 > 0) {
 			// Copy first dim
 			JNI_getIntArrayRegion((jintArray)arr, 0,
 							dim2, (jint*)ARR_DATA_PTR(v));

@@ -162,13 +162,13 @@ static Datum _doubleArray_coerceObject(Type self, jobject doubleArray)
 		jsize dim2;
 		if(arr == 0) {
 			dim2 = 0;
-			nElems = 0;
+			nElems = 1;
 		} else 
 			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jdouble), FLOAT8OID, false);
 
-		if(nElems > 0) {
+		if(dim2 > 0) {
 			// Copy first dim
 			JNI_getDoubleArrayRegion((jdoubleArray)arr, 0,
 							dim2, (jdouble*)ARR_DATA_PTR(v));

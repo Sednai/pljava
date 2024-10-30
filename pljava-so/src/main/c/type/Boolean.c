@@ -152,13 +152,13 @@ static Datum _booleanArray_coerceObject(Type self, jobject booleanArray)
 		jsize dim2;
 		if(arr == 0) {
 			dim2 = 0;
-			nElems = 0;
+			nElems = 1;
 		} else 
 			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jboolean), BOOLOID, false);
 
-		if(nElems > 0) {
+		if(dim2 > 0) {
 			// Copy first dim
 			JNI_getBooleanArrayRegion((jbooleanArray)arr, 0,
 							dim2, (jboolean*)ARR_DATA_PTR(v));

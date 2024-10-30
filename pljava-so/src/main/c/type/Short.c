@@ -155,13 +155,13 @@ static Datum _shortArray_coerceObject(Type self, jobject shortArray)
 		jsize dim2;
 		if(arr == 0) {
 			dim2 = 0;
-			nElems = 0;
+			nElems = 1;
 		} else 
 			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jshort), INT2OID, false);
 
-		if(nElems > 0) {
+		if(dim2 > 0) {
 			// Copy first dim
 			JNI_getShortArrayRegion((jshortArray)arr, 0,
 							dim2, (jshort*)ARR_DATA_PTR(v));
