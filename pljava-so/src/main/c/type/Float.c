@@ -158,20 +158,28 @@ static Datum _floatArray_coerceObject(Type self, jobject floatArray)
 			elog(ERROR,"Higher dimensional arrays not supported");
 
 		jarray arr = (jarray) JNI_getObjectArrayElement(floatArray,0); 
- 		jsize dim2 = JNI_getArrayLength( arr );	
+
+		jsize dim2;
+		if(arr == 0) {
+			dim2 = 0;
+			nElems = 0;
+		} else 
+			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jfloat), FLOAT4OID, false);
 
-		// Copy first dim
-		JNI_getFloatArrayRegion((jfloatArray)arr, 0,
-						dim2, (jfloat*)ARR_DATA_PTR(v));
+		if(nElems > 0) {
+			// Copy first dim
+			JNI_getFloatArrayRegion((jfloatArray)arr, 0,
+							dim2, (jfloat*)ARR_DATA_PTR(v));
+			
+			// Copy remaining
+			for(int i = 1; i < nElems; i++) {
+				jfloatArray els = JNI_getObjectArrayElement((jarray)floatArray,i);
 		
-		// Copy remaining
-		for(int i = 1; i < nElems; i++) {
-			jfloatArray els = JNI_getObjectArrayElement((jarray)floatArray,i);
-	
-			JNI_getFloatArrayRegion(els, 0,
-						dim2, (jfloat*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jfloat)) );
+				JNI_getFloatArrayRegion(els, 0,
+							dim2, (jfloat*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jfloat)) );
+			}
 		}
 
 		PG_RETURN_ARRAYTYPE_P(v);

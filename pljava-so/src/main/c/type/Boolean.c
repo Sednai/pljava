@@ -148,20 +148,28 @@ static Datum _booleanArray_coerceObject(Type self, jobject booleanArray)
 			elog(ERROR,"Higher dimensional arrays not supported");
 
 		jarray arr = (jarray) JNI_getObjectArrayElement(booleanArray,0); 
- 		jsize dim2 = JNI_getArrayLength( arr );	
+ 		
+		jsize dim2;
+		if(arr == 0) {
+			dim2 = 0;
+			nElems = 0;
+		} else 
+			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jboolean), BOOLOID, false);
 
-		// Copy first dim
-		JNI_getBooleanArrayRegion((jbooleanArray)arr, 0,
-						dim2, (jboolean*)ARR_DATA_PTR(v));
+		if(nElems > 0) {
+			// Copy first dim
+			JNI_getBooleanArrayRegion((jbooleanArray)arr, 0,
+							dim2, (jboolean*)ARR_DATA_PTR(v));
+			
+			// Copy remaining
+			for(int i = 1; i < nElems; i++) {
+				jbooleanArray els = JNI_getObjectArrayElement((jarray)booleanArray,i);
 		
-		// Copy remaining
-		for(int i = 1; i < nElems; i++) {
-			jbooleanArray els = JNI_getObjectArrayElement((jarray)booleanArray,i);
-	
-			JNI_getBooleanArrayRegion(els, 0,
-						dim2, (jboolean*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jboolean)) );
+				JNI_getBooleanArrayRegion(els, 0,
+							dim2, (jboolean*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jboolean)) );
+			}
 		}
 	}
 

@@ -157,22 +157,29 @@ static Datum _longArray_coerceObject(Type self, jobject longArray)
 			elog(ERROR,"Higher dimensional arrays not supported");
 		
 		jarray arr = (jarray) JNI_getObjectArrayElement(longArray,0); 
- 		jsize dim2 = JNI_getArrayLength( arr );	
+ 
+		jsize dim2;
+		if(arr == 0) {
+			dim2 = 0;
+			nElems = 0;
+		} else 
+			dim2 = JNI_getArrayLength( arr );	
 
 		v = create2dArrayType(nElems, dim2, sizeof(jlong), INT8OID, false);
 
-		// Copy first dim
-		JNI_getLongArrayRegion((jlongArray)arr, 0,
-						dim2, (jlong*)ARR_DATA_PTR(v));
+		if(nElems > 0) {
+			// Copy first dim
+			JNI_getLongArrayRegion((jlongArray)arr, 0,
+							dim2, (jlong*)ARR_DATA_PTR(v));
+			
+			// Copy remaining
+			for(int i = 1; i < nElems; i++) {
+				jlongArray els = JNI_getObjectArrayElement((jarray)longArray,i);
 		
-		// Copy remaining
-		for(int i = 1; i < nElems; i++) {
-			jlongArray els = JNI_getObjectArrayElement((jarray)longArray,i);
-	
-			JNI_getLongArrayRegion(els, 0,
-						dim2, (jlong*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jlong)) );
+				JNI_getLongArrayRegion(els, 0,
+							dim2, (jlong*) (ARR_DATA_PTR(v)+i*dim2*sizeof(jlong)) );
+			}
 		}
-
 		PG_RETURN_ARRAYTYPE_P(v);
 	}
 }
