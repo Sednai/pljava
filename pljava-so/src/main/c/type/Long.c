@@ -146,7 +146,7 @@ static Datum _longArray_coerceObject(Type self, jobject longArray)
 		
 		v = createArrayType(nElems, sizeof(jlong), INT8OID, false);
 		
-		JNI_getFloatArrayRegion((jlongArray)longArray, 0,
+		JNI_getLongArrayRegion((jlongArray)longArray, 0,
 						nElems, (jlong*)ARR_DATA_PTR(v));
 
 		PG_RETURN_ARRAYTYPE_P(v);
