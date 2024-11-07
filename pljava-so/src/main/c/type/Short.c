@@ -140,7 +140,7 @@ static Datum _shortArray_coerceObject(Type self, jobject shortArray)
 		
 		v = createArrayType(nElems, sizeof(jshort), INT2OID, false);
 		
-		JNI_getFloatArrayRegion((jshortArray)shortArray, 0,
+		JNI_getShortArrayRegion((jshortArray)shortArray, 0,
 						nElems, (jshort*)ARR_DATA_PTR(v));
 
 		PG_RETURN_ARRAYTYPE_P(v);

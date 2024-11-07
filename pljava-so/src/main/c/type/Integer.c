@@ -141,7 +141,7 @@ static Datum _intArray_coerceObject(Type self, jobject intArray)
 		
 		v = createArrayType(nElems, sizeof(jfloat), INT4OID, false);
 		
-		JNI_getFloatArrayRegion((jintArray)intArray, 0,
+		JNI_getIntArrayRegion((jintArray)intArray, 0,
 						nElems, (jint*)ARR_DATA_PTR(v));
 
 		PG_RETURN_ARRAYTYPE_P(v);
